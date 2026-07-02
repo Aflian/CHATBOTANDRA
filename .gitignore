@@ -1,5 +1,7 @@
 # Firebase credentials (JANGAN di-commit)
 serviceAccountKey.json
+*-firebase-adminsdk-*.json
+Backup-codes-*.txt
 
 # Training artifacts (bisa regenerate)
 dataset_id.csv
