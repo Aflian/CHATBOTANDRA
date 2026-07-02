@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindCare Chatbot — Kesehatan Mental</title>
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        * { font-family: 'Inter', sans-serif; }
+
+        .chat-container {
+            height: calc(100vh - 7rem);
+            max-height: 700px;
+        }
+
+        .messages-area {
+            scroll-behavior: smooth;
+            overscroll-behavior: contain;
+        }
+
+        .messages-area::-webkit-scrollbar { width: 6px; }
+        .messages-area::-webkit-scrollbar-track { background: transparent; }
+        .messages-area::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .messages-area::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .typing-dot {
+            animation: typingBounce 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        .typing-dot:nth-child(3) { animation-delay: 0s; }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .rank-badge-1 { background: #fbbf24; color: #92400e; }
+        .rank-badge-2 { background: #e2e8f0; color: #475569; }
+        .rank-badge-3 { background: #fed7aa; color: #9a3412; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-teal-50 via-white to-blue-50 min-h-screen">
+
+    {% if not_ready %}
+    <!-- ── Setup Info ── -->
+    <div class="min-h-screen flex items-center justify-center p-6">
+        <div class="bg-white rounded-3xl shadow-xl max-w-lg w-full p-10 text-center">
+            <div class="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg class="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-3">Model Belum Siap</h1>
+            <p class="text-gray-500 mb-6">
+                Artifacts model belum ditemukan. Jalankan training terlebih dahulu.
+            </p>
+            <div class="bg-gray-50 rounded-2xl p-4 text-left mb-6">
+                <code class="text-sm text-gray-700 block mb-2 font-mono">python prepare_model.py</code>
+                <p class="text-xs text-gray-400">Proses training memakan waktu ~5-15 menit. Setelah selesai, refresh halaman.</p>
+            </div>
+            <button onclick="location.reload()"
+                class="bg-teal-600 hover:bg-teal-700 text-white font-medium px-8 py-3 rounded-xl transition-colors">
+                Refresh Halaman
+            </button>
+        </div>
+    </div>
+    {% else %}
+
+    <!-- ── Main Chat ── -->
+    <div class="max-w-4xl mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="bg-white/80 backdrop-blur-md rounded-3xl shadow-lg p-6 mb-4 border border-white/50">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-teal-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-200/50">
+                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-800">MindCare Chatbot</h1>
+                    <p class="text-sm text-gray-500">Konseling Kesehatan Mental — berbasis TFNN</p>
+                </div>
+                <div class="ml-auto flex items-center gap-3">
+                    <!-- New Chat Button -->
+                    <button id="new-chat-btn" onclick="startNewSession()"
+                        class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span class="hidden sm:inline">New Chat</span>
+                    </button>
+                    <!-- Firebase Status -->
+                    {% if firebase_ready %}
+                    <span class="hidden sm:inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-medium px-3 py-1.5 rounded-full">
+                        <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                        Tersimpan
+                    </span>
+                    {% else %}
+                    <span class="hidden sm:inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-medium px-3 py-1.5 rounded-full" title="Riwayat chat tidak tersimpan">
+                        <span class="w-2 h-2 bg-amber-500 rounded-full"></span>
+                        Lokal
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="bg-white/80 backdrop-blur-md rounded-3xl shadow-lg border border-white/50 overflow-hidden">
+            <!-- Messages -->
+            <div id="messages" class="messages-area p-6 space-y-4 overflow-y-auto chat-container">
+                <!-- Akan diisi oleh JavaScript -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="border-t border-gray-100 p-4 bg-white/50">
+                <form id="chat-form" class="flex gap-3">
+                    <input id="user-input" type="text" autocomplete="off" placeholder="Tulis pesanmu di sini..."
+                        class="flex-1 px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 transition-all text-gray-700 placeholder-gray-400">
+                    <button id="send-btn" type="submit"
+                        class="bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-600 hover:to-blue-700 text-white font-medium px-6 py-3.5 rounded-2xl transition-all shadow-md shadow-teal-200/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                        <span class="hidden sm:inline">Kirim</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const messagesEl = document.getElementById('messages');
+        const form = document.getElementById('chat-form');
+        const input = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        let isProcessing = false;
+
+        // ── Utility ──
+
+        function scrollToBottom() {
+            setTimeout(() => {
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }, 50);
+        }
+
+        function escapeHtml(text) {
+            const d = document.createElement('div');
+            d.textContent = text;
+            return d.innerHTML;
+        }
+
+        // ── Render Message ──
+
+        function addMessage(content, role) {
+            const div = document.createElement('div');
+            div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} fade-in`;
+
+            if (role === 'user') {
+                div.innerHTML = `
+                    <div class="max-w-[80%] bg-gradient-to-br from-teal-500 to-blue-600 rounded-2xl rounded-br-sm p-4 shadow-md">
+                        <p class="text-white leading-relaxed">${escapeHtml(content)}</p>
+                    </div>
+                `;
+            } else if (role === 'bot_single') {
+                // Pesan error / teks biasa
+                div.innerHTML = `
+                    <div class="max-w-[80%] bg-gray-50 rounded-2xl rounded-bl-sm p-4 shadow-sm">
+                        <p class="text-sm font-semibold text-gray-600 mb-1">🧠 MindCare</p>
+                        <p class="text-gray-700 leading-relaxed">${escapeHtml(content)}</p>
+                    </div>
+                `;
+            } else if (role === 'bot') {
+                // content = { jawaban, skor, rank }
+                const r = content.rank || '';
+                let badgeClass = '', rankLabel = '';
+                if (r === 1) { badgeClass = 'rank-badge-1'; rankLabel = 'Paling Relevan'; }
+                else if (r === 2) { badgeClass = 'rank-badge-2'; rankLabel = 'Kedua'; }
+                else if (r === 3) { badgeClass = 'rank-badge-3'; rankLabel = 'Ketiga'; }
+
+                const skorPct = content.skor !== undefined ? (content.skor * 100).toFixed(1) : null;
+
+                div.innerHTML = `
+                    <div class="max-w-[80%] space-y-1">
+                        <div class="bg-gray-50 rounded-2xl rounded-bl-sm p-4 shadow-sm">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-sm font-semibold text-gray-600">🧠 MindCare</span>
+                                ${r ? `<span class="text-xs font-medium px-2 py-0.5 rounded-full ${badgeClass}">#${r} ${rankLabel}</span>` : ''}
+                                ${skorPct !== null ? `<span class="text-xs text-gray-400 ml-auto">${skorPct}% relevan</span>` : ''}
+                            </div>
+                            <p class="text-gray-700 leading-relaxed">${escapeHtml(content.jawaban)}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            messagesEl.appendChild(div);
+            scrollToBottom();
+        }
+
+        function showTyping() {
+            const div = document.createElement('div');
+            div.id = 'typing-indicator';
+            div.className = 'flex justify-start fade-in';
+            div.innerHTML = `
+                <div class="bg-gray-50 rounded-2xl rounded-bl-sm p-5 shadow-sm">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-sm font-semibold text-gray-600 mr-2">🧠 MindCare</span>
+                        <span class="typing-dot w-2.5 h-2.5 bg-teal-400 rounded-full inline-block"></span>
+                        <span class="typing-dot w-2.5 h-2.5 bg-teal-500 rounded-full inline-block"></span>
+                        <span class="typing-dot w-2.5 h-2.5 bg-teal-600 rounded-full inline-block"></span>
+                    </div>
+                </div>
+            `;
+            messagesEl.appendChild(div);
+            scrollToBottom();
+        }
+
+        function removeTyping() {
+            const el = document.getElementById('typing-indicator');
+            if (el) el.remove();
+        }
+
+        // ── Welcome Messages ──
+
+        function showWelcome() {
+            const welcome = `
+                <div class="flex justify-start fade-in">
+                    <div class="max-w-[80%] bg-gray-50 rounded-2xl rounded-bl-sm p-4 shadow-sm">
+                        <p class="text-sm font-semibold text-gray-600 mb-1">🧠 MindCare</p>
+                        <p class="text-gray-700 leading-relaxed">
+                            Halo! Aku MindCare, asisten kesehatan mental berbasis AI.
+                            Ceritakan apa yang kamu rasakan atau pertanyaan seputar kesehatan mental,
+                            dan aku akan mencari jawaban yang paling relevan untukmu. 💙
+                        </p>
+                        <p class="text-xs text-gray-400 mt-2">Coba tanyakan: <span class="italic">"aku merasa cemas"</span></p>
+                    </div>
+                </div>
+            `;
+            messagesEl.insertAdjacentHTML('beforeend', welcome);
+
+            const suggestions = `
+                <div class="flex justify-start fade-in" style="animation-delay:0.15s">
+                    <div class="flex flex-wrap gap-2 max-w-[80%]">
+                        <button onclick="sendSuggestion('aku merasa cemas')"
+                            class="text-xs bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-xl px-3 py-2 transition-colors">😟 aku merasa cemas</button>
+                        <button onclick="sendSuggestion('saya sulit tidur')"
+                            class="text-xs bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-xl px-3 py-2 transition-colors">😴 saya sulit tidur</button>
+                        <button onclick="sendSuggestion('stress dengan pekerjaan')"
+                            class="text-xs bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-xl px-3 py-2 transition-colors">😫 stress dengan pekerjaan</button>
+                        <button onclick="sendSuggestion('merasa kesepian')"
+                            class="text-xs bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-xl px-3 py-2 transition-colors">🥺 merasa kesepian</button>
+                    </div>
+                </div>
+            `;
+            messagesEl.insertAdjacentHTML('beforeend', suggestions);
+            scrollToBottom();
+        }
+
+        // ── Load History ──
+
+        async function loadHistory() {
+            try {
+                const res = await fetch('/history');
+                const data = await res.json();
+
+                if (data.messages && data.messages.length > 0) {
+                    data.messages.forEach(msg => {
+                        if (msg.role === 'user') {
+                            addMessage(msg.content, 'user');
+                        } else if (msg.role === 'bot') {
+                            if (msg.results && msg.results.length > 0) {
+                                msg.results.forEach(r => {
+                                    addMessage({ jawaban: r.jawaban, skor: r.skor, rank: r.rank }, 'bot');
+                                });
+                            } else {
+                                addMessage(msg.content, 'bot_single');
+                            }
+                        }
+                    });
+                } else {
+                    showWelcome();
+                }
+            } catch (err) {
+                showWelcome();
+            }
+        }
+
+        // ── Send Message ──
+
+        async function sendMessage(message) {
+            if (!message || isProcessing) return;
+            isProcessing = true;
+            sendBtn.disabled = true;
+            input.value = '';
+
+            addMessage(message, 'user');
+            showTyping();
+
+            try {
+                const res = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+
+                removeTyping();
+                const data = await res.json();
+
+                if (data.success && data.hasil) {
+                    data.hasil.forEach(h => {
+                        addMessage({ jawaban: h.jawaban, skor: h.skor, rank: h.rank }, 'bot');
+                    });
+                } else {
+                    addMessage(data.error || 'Maaf, terjadi kesalahan. Coba lagi ya.', 'bot_single');
+                }
+            } catch (err) {
+                removeTyping();
+                addMessage('Maaf, koneksi terputus. Periksa server dan coba lagi.', 'bot_single');
+            }
+
+            isProcessing = false;
+            sendBtn.disabled = false;
+            input.focus();
+        }
+
+        function sendSuggestion(text) {
+            input.value = text;
+            sendMessage(text);
+        }
+
+        // ── New Session ──
+
+        async function startNewSession() {
+            if (isProcessing) return;
+            if (!confirm('Mulai percakapan baru? Riwayat sebelumnya akan tetap tersimpan.')) return;
+
+            try {
+                await fetch('/new-session', { method: 'POST' });
+            } catch (_) {}
+
+            // Reset UI
+            messagesEl.innerHTML = '';
+            showWelcome();
+            scrollToBottom();
+            input.focus();
+        }
+
+        // ── Event Listeners ──
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const msg = input.value.trim();
+            if (msg) sendMessage(msg);
+        });
+
+        // ── Init ──
+
+        loadHistory();
+    </script>
+    {% endif %}
+</body>
+</html>

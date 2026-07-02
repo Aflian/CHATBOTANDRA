@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -X POST http://127.0.0.1:5000/chat -H \"Content-Type: application/json\" -d '{\"message\":\"aku cemas\"}')",
+      "Bash(python -c ' *)",
+      "Bash(cd /tmp)",
+      "Bash(curl -s -c jar.txt -b jar.txt -X POST http://127.0.0.1:5000/chat -H 'Content-Type: application/json' -d '{\"message\":\"tes firebase storage\"}')",
+      "Bash(curl -s -c jar.txt -b jar.txt http://127.0.0.1:5000/history)"
+    ]
+  }
+}

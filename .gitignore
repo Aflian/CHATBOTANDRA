@@ -1,0 +1,29 @@
+# Firebase credentials (JANGAN di-commit)
+serviceAccountKey.json
+
+# Training artifacts (bisa regenerate)
+dataset_id.csv
+kurva_loss.png
+confusion_matrix.png
+ringkasan_metrik.png
+roc_curve.png
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environment
+venv/
+.env
+*.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
